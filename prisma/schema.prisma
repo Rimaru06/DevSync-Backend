@@ -4,6 +4,23 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// Example User Flow:
+// User Signs Up → Creates User record
+// Creates Room → Creates Room + RoomMember (as OWNER)
+// Invites Friend → Creates Invitation record
+// Friend Joins → Creates RoomMember record
+// Start Coding → Creates CodeFile records
+// Live Editing → Creates CodeEdit records for each keystroke
+// Chat About Code → Creates ChatMessage records
+// WebSocket Connected → Creates UserSession record
+// Key Relationships:
+// 👤 User can own multiple Rooms
+// 🏠 Room can have multiple Members
+// 📁 Room can have multiple CodeFiles
+// 💻 CodeFile tracks all CodeEdits
+// 💬 Room has its own ChatMessages
+// 🎫 Room can have multiple Invitations
+
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -12,4 +29,176 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// User model for authentication and profile
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  email       String   @unique
+  avatar      String?  // Profile picture URL
+  password    String   // Hashed password
+  isOnline    Boolean  @default(false)
+  lastSeen    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  ownedRooms      Room[]           @relation("RoomOwner")
+  roomMembers     RoomMember[]
+  chatMessages    ChatMessage[]
+  codeEdits       CodeEdit[]
+  invitations     Invitation[]
+  userSessions    UserSession[]
+
+  @@map("users")
+}
+
+// Room model for coding sessions
+model Room {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  isPrivate   Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  inviteCode  String    @unique @default(cuid()) // For easy room joining
+  maxMembers  Int       @default(10)
+  ownerId     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  owner        User           @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members      RoomMember[]
+  codeFiles    CodeFile[]
+  chatMessages ChatMessage[]
+  invitations  Invitation[]
+
+  @@map("rooms")
+}
+
+// Junction table for room membership
+model RoomMember {
+  id       String           @id @default(cuid())
+  userId   String
+  roomId   String
+  role     RoomMemberRole   @default(MEMBER)
+  joinedAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@map("room_members")
+}
+
+// Code files in a room
+model CodeFile {
+  id        String   @id @default(cuid())
+  name      String
+  language  String   @default("javascript") // Programming language
+  content   String   @default("") // Current file content
+  roomId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  room      Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  codeEdits CodeEdit[]
+
+  @@map("code_files")
+}
+
+// Track code edits for real-time collaboration
+model CodeEdit {
+  id        String   @id @default(cuid())
+  fileId    String
+  userId    String
+  operation String   // 'insert', 'delete', 'replace'
+  position  Int      // Character position in the file
+  content   String?  // Content that was inserted/replaced
+  length    Int?     // Length of content that was deleted
+  timestamp DateTime @default(now())
+
+  // Relations
+  file CodeFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("code_edits")
+}
+
+// Chat messages in rooms
+model ChatMessage {
+  id        String      @id @default(cuid())
+  content   String
+  type      MessageType @default(TEXT)
+  roomId    String
+  userId    String
+  replyToId String?     // For threaded conversations
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  room    Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo ChatMessage? @relation("MessageReply", fields: [replyToId], references: [id])
+  replies ChatMessage[] @relation("MessageReply")
+
+  @@map("chat_messages")
+}
+
+// Room invitations
+model Invitation {
+  id        String           @id @default(cuid())
+  roomId    String
+  inviterId String
+  email     String?          // For email invitations
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+
+  // Relations
+  room    Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  inviter User @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
+}
+
+// User sessions for managing active connections
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  roomId    String?  // Current room if any
+  socketId  String   @unique // WebSocket connection ID
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+// Enums
+enum RoomMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum MessageType {
+  TEXT
+  CODE_SNIPPET
+  FILE_SHARE
+  SYSTEM
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
 }

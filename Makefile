@@ -26,34 +26,34 @@ install:
 # Build Docker images
 build:
 	@echo "Building Docker images..."
-	docker compose build
+	sudo docker compose build
 
 # Start services in detached mode
 up:
 	@echo "Starting services..."
-	docker compose up -d
+	sudo docker compose up -d
 
 # Start services in development mode (with logs)
 dev:
 	@echo "Starting development environment..."
-	docker compose up --build
+	sudo docker compose up --build
 
 # Stop services
 down:
 	@echo "Stopping services..."
-	docker compose down
+	sudo docker compose down
 
 # Show logs
 logs:
-	docker compose logs -f
+	sudo docker compose logs -f
 
 # Remove containers and volumes
 clean:
 	@echo "Cleaning up containers and volumes..."
-	docker compose down -v
+	sudo docker compose down -v
 
 # Full cleanup - remove everything
 reset:
 	@echo "Performing full reset..."
-	docker compose down -v --rmi all
-	docker system prune -f
+	sudo docker compose down -v --rmi all
+	sudo docker system prune -f

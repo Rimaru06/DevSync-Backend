@@ -1,4 +1,5 @@
 FROM node:20-alpine
+
 WORKDIR /app
 
 # Install pnpm
@@ -16,5 +17,5 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# Development command
+# Start development server with hot reload
 CMD ["pnpm", "run", "dev"]

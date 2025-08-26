@@ -33,42 +33,45 @@ datasource db {
 
 // User model for authentication and profile
 model User {
-  id          String   @id @default(cuid())
-  username    String   @unique
-  email       String   @unique
-  avatar      String?  // Profile picture URL
-  password    String   // Hashed password
-  isOnline    Boolean  @default(false)
-  lastSeen    DateTime @default(now())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String        @id @default(cuid())
+  username  String        @unique
+  email     String        @unique
+  avatar    String? // Profile picture URL
+  password  String? // Hashed password (optional for OAuth users)
+  googleId  String?       @unique // Google OAuth ID
+  githubId  String?       @unique // GitHub OAuth ID
+  provider  AuthProvider? @default(EMAIL) // Authentication provider
+  isOnline  Boolean       @default(false)
+  lastSeen  DateTime      @default(now())
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   // Relations
-  ownedRooms      Room[]           @relation("RoomOwner")
-  roomMembers     RoomMember[]
-  chatMessages    ChatMessage[]
-  codeEdits       CodeEdit[]
-  invitations     Invitation[]
-  userSessions    UserSession[]
+  ownedRooms   Room[]        @relation("RoomOwner")
+  roomMembers  RoomMember[]
+  chatMessages ChatMessage[]
+  codeEdits    CodeEdit[]
+  invitations  Invitation[]
+  userSessions UserSession[]
 
   @@map("users")
 }
 
 // Room model for coding sessions
 model Room {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   description String?
-  isPrivate   Boolean   @default(false)
-  isActive    Boolean   @default(true)
-  inviteCode  String    @unique @default(cuid()) // For easy room joining
-  maxMembers  Int       @default(10)
+  isPrivate   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  inviteCode  String   @unique @default(cuid()) // For easy room joining
+  maxMembers  Int      @default(10)
   ownerId     String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Relations
-  owner        User           @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner        User          @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   members      RoomMember[]
   codeFiles    CodeFile[]
   chatMessages ChatMessage[]
@@ -79,11 +82,11 @@ model Room {
 
 // Junction table for room membership
 model RoomMember {
-  id       String           @id @default(cuid())
+  id       String         @id @default(cuid())
   userId   String
   roomId   String
-  role     RoomMemberRole   @default(MEMBER)
-  joinedAt DateTime         @default(now())
+  role     RoomMemberRole @default(MEMBER)
+  joinedAt DateTime       @default(now())
 
   // Relations
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -115,10 +118,10 @@ model CodeEdit {
   id        String   @id @default(cuid())
   fileId    String
   userId    String
-  operation String   // 'insert', 'delete', 'replace'
-  position  Int      // Character position in the file
-  content   String?  // Content that was inserted/replaced
-  length    Int?     // Length of content that was deleted
+  operation String // 'insert', 'delete', 'replace'
+  position  Int // Character position in the file
+  content   String? // Content that was inserted/replaced
+  length    Int? // Length of content that was deleted
   timestamp DateTime @default(now())
 
   // Relations
@@ -135,14 +138,14 @@ model ChatMessage {
   type      MessageType @default(TEXT)
   roomId    String
   userId    String
-  replyToId String?     // For threaded conversations
+  replyToId String? // For threaded conversations
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
   // Relations
-  room    Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replyTo ChatMessage? @relation("MessageReply", fields: [replyToId], references: [id])
+  room    Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replyTo ChatMessage?  @relation("MessageReply", fields: [replyToId], references: [id])
   replies ChatMessage[] @relation("MessageReply")
 
   @@map("chat_messages")
@@ -153,7 +156,7 @@ model Invitation {
   id        String           @id @default(cuid())
   roomId    String
   inviterId String
-  email     String?          // For email invitations
+  email     String? // For email invitations
   status    InvitationStatus @default(PENDING)
   expiresAt DateTime
   createdAt DateTime         @default(now())
@@ -169,7 +172,7 @@ model Invitation {
 model UserSession {
   id        String   @id @default(cuid())
   userId    String
-  roomId    String?  // Current room if any
+  roomId    String? // Current room if any
   socketId  String   @unique // WebSocket connection ID
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -182,6 +185,12 @@ model UserSession {
 }
 
 // Enums
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  GITHUB
+}
+
 enum RoomMemberRole {
   OWNER
   ADMIN

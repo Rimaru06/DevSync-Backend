@@ -5,6 +5,7 @@ import express from "express";
 import type { Request, Response } from "express";
 import cookieParser from 'cookie-parser'
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+import authRouters from "./routes/auth.js"
 
 const app = express();
 
@@ -24,6 +25,8 @@ app.get("/", (req: Request, res: Response) => {
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
+
+app.use('/api/v1/auth', authRouters);
 
 
 

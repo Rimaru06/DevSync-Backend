@@ -3,9 +3,42 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "../generated/prisma/index.js";
 import { createError } from "../middleware/errorHandler.js";
-import { emailLoginSchema } from "../schemas/auth.js";
+import { emailLoginSchema, registerSchema } from "../schemas/auth.js";
 
 const prisma = new PrismaClient();
+
+export const EmailRegister = async (
+  req : Request,
+  res: Response,
+  next : NextFunction
+) => {
+  const {username, email , password} = registerSchema.parse(req.body);
+
+  const user = await prisma.user.findUnique({
+    where : {email}
+  })
+
+  if (user) {
+    throw createError.unauthorized("User already resgistered Please Login");
+  }
+
+  const hashedPassword = await bcrypt.hash(password,10);
+
+  await prisma.user.create({
+    data : {
+      username,
+      email,
+      password : hashedPassword
+    }
+  })
+
+  res.json({
+    success : true,
+    message : "Resgistration successful"
+  })
+
+
+}
 
 export const EmailLogin = async (
   req: Request,
@@ -38,7 +71,7 @@ export const EmailLogin = async (
     throw createError.unauthorized("Invalid credentials");
   }
 
-    const acessToken = jwt.sign(
+    const accessToken = jwt.sign(
     { userId: user.id, email: user.email },
     process.env.ACCESS_JWT_SECRET as string,
     { expiresIn: "10m" }
@@ -55,18 +88,19 @@ export const EmailLogin = async (
     data: { lastSeen: new Date() },
   });
 
-  res.cookie('jwt',refreshToken, {
-    httpOnly : true,
-    sameSite: 'none',
-    secure: true,
-    maxAge : 24 * 60 * 60 * 1000
-  })
+  res.cookie("jwt", refreshToken, {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 24 * 60 * 60 * 1000,
+  });
 
   res.json({
     success: true,
     message: "Login successful",
     data: {
-      acessToken
+      accessToken
     },
   });
 };
+

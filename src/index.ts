@@ -3,16 +3,23 @@ dotenv.config();
 
 import express from "express";
 import type { Request, Response } from "express";
-import cookieParser from 'cookie-parser'
+import cookieParser from "cookie-parser";
+import { createServer } from "http";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
-import authRouters from "./routes/auth.js"
+import authRouters from "./routes/auth.js";
+import roomRouters from "./routes/room.js";
+import userRouters from "./routes/user.js";
+import { setupSocketIO } from "./services/webSocket.js";
 
 const app = express();
+const server = createServer(app);
+
+// Setup Socket.IO
+setupSocketIO(server);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-
 
 app.get("/", (req: Request, res: Response) => {
   res.json({
@@ -21,21 +28,21 @@ app.get("/", (req: Request, res: Response) => {
   });
 });
 
-
 app.get("/health", (req: Request, res: Response) => {
   res.json({ status: "ok" });
 });
 
-app.use('/api/v1/auth', authRouters);
-
-
+app.use("/api/v1/auth", authRouters);
+app.use("/api/v1/rooms", roomRouters);
+app.use("/api/v1/users", userRouters);
 
 app.use(notFoundHandler);
-app.use(errorHandler); 
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📡 Access at: http://localhost:${PORT}`);
+  console.log(`🔌 WebSocket server is ready for real-time collaboration`);
 });

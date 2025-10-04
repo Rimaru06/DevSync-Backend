@@ -72,8 +72,40 @@ export const getCurrentUser = async (
   res: Response,
   next: NextFunction
 ) => {
-  res.json({
-    success: true,
-    data: req.user,
-  });
+  try {
+    const { PrismaClient } = await import("../generated/prisma/index.js");
+    const prisma = new PrismaClient();
+    
+    if (!req.user?.userId) {
+      throw createError.unauthorized("User ID not found in token");
+    }
+    
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        avatar: true,
+        provider: true,
+      },
+    });
+
+    if (!user) {
+      throw createError.notFound("User not found");
+    }
+
+    res.json({
+      success: true,
+      data: {
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        provider: user.provider,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 };

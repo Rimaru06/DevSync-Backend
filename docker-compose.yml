@@ -16,23 +16,23 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   # Node.js Application
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: devsync_app
-    restart: unless-stopped
-    environment:
-      PORT: ${APP_PORT:-3000}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-mysecretpassword}@db:5432/${POSTGRES_DB:-devsync}
-    ports:
-      - "${APP_PORT:-3000}:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    depends_on:
-      - db
-    command: pnpm run dev
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   container_name: devsync_app
+  #   restart: unless-stopped
+  #   environment:
+  #     PORT: ${APP_PORT:-3000}
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-mysecretpassword}@db:5432/${POSTGRES_DB:-devsync}
+  #   ports:
+  #     - "${APP_PORT:-3000}:3000"
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - db
+  #   command: pnpm run dev
 
   # pgAdmin
   pgadmin:
